@@ -1,39 +1,18 @@
 
 const { ccclass, property } = cc._decorator;
 
-class Visible {
-    visible: boolean;
-}
-
-class Position {
-    position: cc.Vec2;
-}
-
-class Ball {
-    visible: Visible;
-    position: Position;
-}
-
-class Arrow {
-    visible: Visible;
-    position: Position;
-}
-
-/**
- * 輪盤種類
- */
-enum EMode {
-    arrow,
-    ball,
-}
-
 /**
  * 輪盤狀態
  */
 export enum EState {
-    running, // 旋轉中
+    running, // 運轉中
     slowDown, // 減速準備停止
     stopped, // 停止
+}
+
+enum EAction {
+    triggerRunning, // 觸發運轉
+    triggerStopped, // 觸發停止
 }
 
 /**
@@ -47,80 +26,48 @@ export class Roulette extends cc.Component {
 
     state: EState; // 目前輪盤狀態
 
-    mode: EMode; // 目前輪盤種類
-    clockwise: boolean; // true順時針旋轉, false則是逆時針旋轉
-    highlight: boolean; // 指向的獎項提示
+    ballClockwise: boolean; // 小球 true順時針旋轉, false則是逆時針旋轉
+    ballHighlight: boolean; // 小球位置對應的獎項提示
 
-    rouletteRotate: boolean; // 內圈輪盤是否旋轉
+    rouletteRoatate: boolean; // 內圈輪盤是否旋轉
     rouletteClockwise: boolean;// 內圈輪盤 true順時針旋轉, false則是逆時針旋轉
 
     stateListener: StateListener; // 輪盤狀態
 
-    public init(): Roulette {
-        this.bonusCount = 37;
+    action: EAction; // 觸發事件
+
+    public init(
+        count: number,
+        ballClockwise: boolean, ballHighlight: boolean,
+        rouletteRoatate: boolean, rouletteClockwise: boolean,
+        stateListener: StateListener,
+    ) {
+        this.bonusCount = count;
+
+        this.ballClockwise = ballClockwise;
+        this.ballHighlight = ballHighlight;
+
+        this.rouletteRoatate = rouletteRoatate;
+        this.rouletteClockwise = rouletteClockwise;
+
+        this.stateListener = stateListener;
 
         this.state = EState.stopped;
-
-        this.mode = EMode.arrow;
-        this.clockwise = true;
-        this.highlight = true;
-
-        this.rouletteRotate = true;
-        this.rouletteClockwise = true;
-
-        this.updateUI();
-
-        return this;
     }
 
     getState(): EState {
         return this.state;
     }
 
-    setStateListener(stateListener: StateListener): Roulette {
-        this.stateListener = stateListener;
-        return this;
-    }
-
-    setBonus(count: number): Roulette {
-        this.bonusCount = count;
-        this.updateUI();
-        return this;
-    }
-
-    setMode(mode: EMode, clockwise: boolean, highlight: boolean): Roulette {
-        this.mode = mode;
-        this.clockwise = clockwise;
-        this.highlight = highlight;
-        this.updateUI();
-        return this;
-    }
-
-    setRoulette(roatate: boolean, clockwise: boolean): Roulette {
-        this.rouletteRotate = roatate;
-        this.rouletteClockwise = clockwise;
-        this.updateUI();
-        return this;
-    }
-
-    private updateUI() {
-        this.node.getChildByName("arrow").active = this.mode == EMode.arrow;
-        this.node.getChildByName("ball").active = this.mode == EMode.ball;
-    }
-
     /**
-     * 開始轉動
+     * 開始運轉
      */
     play() {
         if (this.state != EState.stopped) {
             return;
         }
 
-        this.state = EState.running;
-
-        if (this.stateListener) {
-            this.stateListener(EState.running);
-        }
+        this.action = EAction.triggerRunning;
     }
 
 
@@ -134,22 +81,53 @@ export class Roulette extends cc.Component {
             return;
         }
 
-        this.state = EState.slowDown;
-
-        if (this.stateListener) {
-            this.stateListener(EState.slowDown);
-        }
+        this.action = EAction.triggerStopped;
     }
 
     update(dt) {
+        if (this.action == EAction.triggerRunning) {
+            this.action = null;
+            this.running();
+        } else if (this.action == EAction.triggerStopped) {
+            this.action = null;
+        }
+
         if (this.state == EState.running) {
-            this.node.getChildByName("roulette").rotation += 0.1;
+            this.node.getChildByName("wheel_roulette").rotation -= 1;
             return;
         }
 
         if (this.state == EState.slowDown) {
 
             return;
+        }
+    }
+
+    private running(): void {
+        {
+            let ballNode = this.node.getChildByName("ball");
+            let ballRigidBody = ballNode.getComponent(cc.RigidBody);
+
+            // cc.tween(ballNode)
+            //     .call(() => {
+            //         cc.log("初始化小球位置");
+            //         ballNode.active = false;
+            //         ballNode.setPosition(-200, 275);
+            //         ballRigidBody.angularVelocity = 1000;
+            //     })
+            //     // .delay(1)
+            //     .call(() => {
+            //         cc.log("顯示小球");
+            //         ballNode.active = true;
+            //     })
+            //     .start();
+        }
+
+
+        this.state = EState.running;
+
+        if (this.stateListener) {
+            this.stateListener(EState.running);
         }
     }
 }
